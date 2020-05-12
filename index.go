@@ -13,7 +13,7 @@
 //  })
 //  fusing.AddResource("id-xxxx")
 //  sourceId:="id-xxxx"
-// // 是否执行资源【是否已经熔断】
+//  // 是否执行资源【是否已经熔断】
 //  if fusing.Pass(sourceId){
 //    fusing.IncrementRequest(sourceId)
 //     // TODO  业务逻辑在这里
