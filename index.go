@@ -1,4 +1,29 @@
-// copy from xionghu@mgtv.com, update some code
+// Package fusing 一个延迟和容错库，旨在隔离对远程系统，服务和第三方库的访问点，停止级联故障.
+//
+// 快速开始:
+//  fusing.Init(FlowRule{
+//    ActiveOnQPS:   50,
+//    Period:        5 * time.Second,
+//    DegradeRate:   10,
+//    FastRecover:   70,
+//    PeriodRecover: 10,
+//    MinFlow:       10,
+//  }, func(s string) {
+//
+//  })
+//  fusing.AddResource("id-xxxx")
+//  sourceId:="id-xxxx"
+// // 是否执行资源【是否已经熔断】
+//  if fusing.Pass(sourceId){
+//    fusing.IncrementRequest(sourceId)
+//     // TODO  业务逻辑在这里
+//      // 请求第三方接口
+//    r, err := http.Get("xxxxx")
+//    if err != nil{
+//      // 第三方出现错误的情况下，增加一个错误请求
+//      fusing.IncrementError(sourceId)
+//    }
+//  }
 package fusing
 
 import (
@@ -11,29 +36,32 @@ import (
   "time"
 )
 
-// flow rule
+// FlowRule 流量规则
 type FlowRule struct {
-  ActiveOnQPS int // QPS达到某个数值时，激活依赖服务的流量控制规则
-  Period time.Duration // 计算周期
-  // 当请求错误比率达到DegradeRate值后，开始对 依赖服务的流量控制
+  // ActiveOnQPS QPS达到某个数值时，激活依赖服务的流量控制规则
+  ActiveOnQPS int
+  // Period 计算周期
+  Period time.Duration
+  // DegradeRate 当请求错误比率达到DegradeRate值后，开始对 依赖服务的流量控制
   DegradeRate int 
-  // 当请求错误比率下降到DegradeRate 后，开始逐步解除对依赖服务的流量控制
+  // FastRecover 当请求错误比率下降到DegradeRate 后，开始逐步解除对依赖服务的流量控制
   // 快速恢复 请求的通过率，  在通过率达到 FastRecover 之前， 每个计算周期内，通过率翻倍
   FastRecover        int
-  // 当通过率 达到  快速恢复通过率 之后，通过率每次增加 PeriodRecover 直到 100%
+  // PeriodRecover 当通过率 达到  快速恢复通过率 之后，通过率每次增加 PeriodRecover 直到 100%
   PeriodRecover int
-  // 请求的最小流量 【请求的通过率】
+  // MinFlow 请求的最小流量 【请求的通过率】
   MinFlow int
 }
 
 var (
   flowRule  FlowRule
-  flowRateMap = map[string]*Resource{}
+  flowRateMap = map[string]*resource{}
   mapLocker   = new(sync.RWMutex)
   LogFn func(string)
 )
 
-type Resource struct {
+// 资源
+type resource struct {
   ID          string
   reqSum      int // 计算周期内 资源的请求数量
   errorSum    int  //  计算周期内 资源的请求错误的数量
@@ -72,7 +100,7 @@ func Init(rule FlowRule, logFn func(string)) {
     for {
       select {
       case _ = <-flowTimer.C:
-        UpdateFlowRate()
+        updateFlowRate()
       case _ = <-qpsTimer.C:
         updateQPS()
       }
@@ -86,7 +114,7 @@ func AddResource(id string) bool {
   defer mapLocker.Unlock()
   _, flag := flowRateMap[id]
   if !flag {
-    flowRateMap[id] = &Resource{ID: id, flowRate: 100}
+    flowRateMap[id] = &resource{ID: id, flowRate: 100}
     return true
   } else {
     return false
@@ -94,7 +122,7 @@ func AddResource(id string) bool {
 }
 
 // 周期性计算所有资源流量
-func UpdateFlowRate() {
+func updateFlowRate() {
   mapLocker.RLock()
   for _, v := range flowRateMap {
     calculateFlowRate(v)
@@ -103,7 +131,7 @@ func UpdateFlowRate() {
 }
 
 // 周期性计算某个资源流量
-func calculateFlowRate(item *Resource) {
+func calculateFlowRate(item *resource) {
   if item.reqSum == 0 {
     item.errorRate = 0
     item.errorSum = 0
@@ -137,7 +165,7 @@ func calculateFlowRate(item *Resource) {
   item.errorSum = 0
 }
 
-// 增加
+// IncrementRequest 增加一个资源的请求计数器
 func IncrementRequest(resourceId string) bool {
   mapLocker.RLock()
   item, flag := flowRateMap[resourceId]
@@ -149,6 +177,7 @@ func IncrementRequest(resourceId string) bool {
   return true
 }
 
+// IncrementError 增加一个资源的错误请求计数器
 func IncrementError(resourceId string) bool {
   mapLocker.RLock()
   item, flag := flowRateMap[resourceId]
@@ -160,6 +189,7 @@ func IncrementError(resourceId string) bool {
   return true
 }
 
+// Pass 是否允许资源执行
 func Pass(resourceId string) bool {
   mapLocker.RLock()
   item, flag := flowRateMap[resourceId]

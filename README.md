@@ -1,6 +1,8 @@
 # Fusing
 
-Fusing 一个延迟和容错库，旨在隔离对远程系统，服务和第三方库的访问点，停止级联故障
+Fusing 一个延迟和容错库，旨在隔离对远程系统，服务和第三方库的访问点，停止级联故障.
+
+Note: copy from xionghu@mgtv.com, update some code
 
 ## Getting Start
 
