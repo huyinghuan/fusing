@@ -57,7 +57,7 @@ var (
   flowRateMap = map[string]*resource{}
   mapLocker   = new(sync.RWMutex)
   // Log 记录日志输出
-  Log func(string)
+  Log = func(s string){}
 )
 
 // 资源
