@@ -8,9 +8,9 @@
 //    FastRecover:   70,
 //    PeriodRecover: 10,
 //    MinFlow:       10,
-//  }, func(s string) {
-//
 //  })
+//  // 记录日志输出。可以不定义
+//  fusing.Log = func(s string){fmt.Println(s)}
 //  fusing.AddResource("id-xxxx")
 //  sourceId:="id-xxxx"
 //  // 是否执行资源【是否已经熔断】
@@ -27,7 +27,6 @@
 package fusing
 
 import (
-  "fmt"
   "log"
   "math/rand"
   "strconv"
@@ -57,7 +56,8 @@ var (
   flowRule  FlowRule
   flowRateMap = map[string]*resource{}
   mapLocker   = new(sync.RWMutex)
-  LogFn func(string)
+  // Log 记录日志输出
+  Log func(string)
 )
 
 // 资源
@@ -74,7 +74,7 @@ type resource struct {
 func updateQPS() {
   mapLocker.RLock()
   for _, v := range flowRateMap {
-    fmt.Println(strings.Join([]string{
+    Log(strings.Join([]string{
       time.Now().Format("2006-01-02 15:04:05"),
       v.ID,
       strconv.Itoa(v.qps - v.blocked),
@@ -88,9 +88,8 @@ func updateQPS() {
 }
 
 // 初始化流量降级服务
-func Init(rule FlowRule, logFn func(string)) {
+func Init(rule FlowRule) {
   flowRule = rule
-  LogFn = logFn
   if flowRule.Period < time.Second{
     log.Fatal("Calculation period cannot not be less than 1s")
   }

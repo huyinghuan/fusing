@@ -3,9 +3,17 @@ package fusing
 import (
   "fmt"
   "math/rand"
+  "os"
   "testing"
   "time"
 )
+
+func TestMain(m *testing.M){
+  Log = func(s string) {
+    fmt.Println(s)
+  }
+  os.Exit(m.Run())
+}
 
 // 测试 QPS 2个资源
 func TestGo(t *testing.T) {
@@ -17,8 +25,6 @@ func TestGo(t *testing.T) {
     FastRecover:   70,
     PeriodRecover: 10,
     MinFlow:       10,
-  }, func(s string) {
-
   })
 
   for i:=0;i < resourceCount; i++{
@@ -71,8 +77,6 @@ func TestActiveConf(t *testing.T) {
     FastRecover:   70,
     PeriodRecover: 10,
     MinFlow:       10,
-  }, func(s string) {
-
   })
 
   for i:=0;i < resourceCount; i++{
@@ -125,8 +129,6 @@ func TestResourceRW(t *testing.T){
     FastRecover:   70,
     PeriodRecover: 10,
     MinFlow:       10,
-  }, func(s string) {
-
   })
 
   for i:=0;i < resourceCount; i++{
@@ -195,8 +197,6 @@ func BenchmarkAddResource(b *testing.B) {
     FastRecover:   70,
     PeriodRecover: 10,
     MinFlow:       10,
-  }, func(s string) {
-
   })
   b.StartTimer()
 
