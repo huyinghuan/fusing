@@ -87,7 +87,7 @@ func updateQPS() {
   mapLocker.RUnlock()
 }
 
-// 初始化流量降级服务
+// Init 初始化流量降级服务
 func Init(rule FlowRule) {
   flowRule = rule
   if flowRule.Period < time.Second{
@@ -107,7 +107,7 @@ func Init(rule FlowRule) {
   }()
 }
 
-// 增加一个资源
+// AddResource 增加一个资源
 func AddResource(id string) bool {
   mapLocker.Lock()
   defer mapLocker.Unlock()
@@ -118,6 +118,26 @@ func AddResource(id string) bool {
   } else {
     return false
   }
+}
+
+// 增加资源列表
+func AddResourceList(queue []string) {
+  mapLocker.Lock()
+  defer mapLocker.Unlock()
+  for _, id:= range queue{
+    _, flag := flowRateMap[id]
+    if !flag {
+      flowRateMap[id] = &resource{ID: id, flowRate: 100}
+    }
+  }
+}
+
+// 删除一个资源
+// DelResource 增加一个资源
+func DelResource(id string) {
+  mapLocker.Lock()
+  delete(flowRateMap, id)
+  mapLocker.Unlock()
 }
 
 // 周期性计算所有资源流量
