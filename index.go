@@ -14,7 +14,7 @@ import (
 // flow rule
 type FlowRule struct {
   ActiveOnQPS int // QPS达到某个数值时，激活依赖服务的流量控制规则
-  Duration time.Duration // 计算周期
+  Period time.Duration // 计算周期
   // 当请求错误比率达到DegradeRate值后，开始对 依赖服务的流量控制
   DegradeRate int 
   // 当请求错误比率下降到DegradeRate 后，开始逐步解除对依赖服务的流量控制
@@ -44,9 +44,11 @@ type Resource struct {
 }
 
 func updateQPS() {
+  mapLocker.RLock()
   for _, v := range flowRateMap {
     fmt.Println(strings.Join([]string{
       time.Now().Format("2006-01-02 15:04:05"),
+      v.ID,
       strconv.Itoa(v.qps - v.blocked),
       strconv.Itoa(v.blocked),
       strconv.Itoa(v.qps),
@@ -54,16 +56,17 @@ func updateQPS() {
     v.qps = 0
     v.blocked = 0
   }
+  mapLocker.RUnlock()
 }
 
 // 初始化流量降级服务
 func Init(rule FlowRule, logFn func(string)) {
   flowRule = rule
   LogFn = logFn
-  if flowRule.Duration < time.Second{
+  if flowRule.Period < time.Second{
     log.Fatal("Calculation period cannot not be less than 1s")
   }
-  flowTimer := time.NewTicker(flowRule.Duration)
+  flowTimer := time.NewTicker(flowRule.Period)
   qpsTimer := time.NewTicker(time.Second)
   go func() {
     for {
@@ -92,9 +95,11 @@ func AddResource(id string) bool {
 
 // 周期性计算所有资源流量
 func UpdateFlowRate() {
+  mapLocker.RLock()
   for _, v := range flowRateMap {
     calculateFlowRate(v)
   }
+  mapLocker.RUnlock()
 }
 
 // 周期性计算某个资源流量
@@ -155,8 +160,7 @@ func IncrementError(resourceId string) bool {
   return true
 }
 
-
-func Go(resourceId string) bool {
+func Pass(resourceId string) bool {
   mapLocker.RLock()
   item, flag := flowRateMap[resourceId]
 
