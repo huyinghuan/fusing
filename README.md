@@ -24,9 +24,7 @@ fusing.Init(FlowRule{
     FastRecover:   70,
     PeriodRecover: 10,
     MinFlow:       10,
-  }, func(s string) {
-
- })
+  })
 ```
 
 2. 定义资源
